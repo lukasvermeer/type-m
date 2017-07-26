@@ -166,15 +166,15 @@
 							description: 'The simulated effect is so large compared to the sample size, it will be almost impossible to miss. This means power is effectively 100%. As a result, the type-M error will be very tiny, and the likelihood of making a type-S error will be negligible.',
 							recommendation: 'Try this one first to get an idea of what a good result should look like.'
 						},
-						{ n: 1000, cr: 0.1, effect: 0.052, bounds: [-0.04,0.144], power: 0.8,
+						{ n: 1000, cr: 0.1, effect: 0.052, bounds: [-0.04,0.144], power: 0.7,
 							title: 'Properly powered',
 							description: 'We have powered the test according to common practise, so that approximately 80% of all replications will detect a significant effect. As a result, the type-M error will be manageable, and the likelihood of making a type-S error will still be negligible.'
 						},
-						{ n: 1000, cr: 0.1, effect: 0.025, bounds: [-0.07,0.12], power: 0.35,
+						{ n: 1000, cr: 0.1, effect: 0.025, bounds: [-0.07,0.12], power: 0.24,
 							title: 'Somewhat underpowered',
 							description: 'We have somewhat underpowered the test, so that approximately 35% of all replications will detect a significant effect. As a result, the type-M error will be substantial, and the likelihood of making a type-S error will start to be noticeable.'
 						},
-						{ n: 1000, cr: 0.1, effect: 0.001, bounds: [-0.099,0.101], power: 0.1,
+						{ n: 1000, cr: 0.1, effect: 0.001, bounds: [-0.099,0.101], power: 0.05,
 							title: 'Massively underpowered',
 							description: 'The simulated effect is so tiny compared to the sample size, it will be almost impossible to detect. Power will be effectively only 10%. As a result, the type-M error will be ginormous, and the likelihood of making a type-S error will be substantial.'
 						},
@@ -270,7 +270,7 @@
 							effect = (var_c/var_n) - (base_c/base_n);
 							gval = calculate_g_test([[base_n - base_c, base_c], [var_n - var_c, var_c]]);
 
-							if (gval >= 2.7055) {
+							if (gval >= 3.841459) {
 								if (effect > 0) {
 									this.results.significant.push(effect);
 								} else {
