@@ -164,12 +164,12 @@
 				data: {
 					bins: 200,
 					parameter_sets: [
-						{ n: 1000, cr: 0.1, effect: 0.1, bounds: [0,0.2], power: 1,
+						{ n: 1000, cr: 0.1, effect: 0.1, bounds: [0,0.2], power: 0.99,
 							title: 'Massively overpowered',
 							description: 'The simulated effect is so large compared to the sample size, it will be almost impossible to miss. This means power is effectively 100%. As a result, the type-M error will be very tiny, and the likelihood of making a type-S error will be negligible.',
 							recommendation: 'Try this one first to get an idea of what a good result should look like.'
 						},
-						{ n: 1000, cr: 0.1, effect: 0.052, bounds: [-0.04,0.144], power: 0.7,
+						{ n: 1000, cr: 0.1, effect: 0.059, bounds: [-0.035,0.149], power: 0.8,
 							title: 'Properly powered',
 							description: 'We have powered the test according to common practise, so that approximately 80% of all replications will detect a significant effect. As a result, the type-M error will be manageable, and the likelihood of making a type-S error will still be negligible.'
 						},
