@@ -50,7 +50,8 @@
 							</small></p>
 						</div>
 						<div class="modal-footer">
-							<button type="button" class="btn btn-success" v-on:click="restart" data-dismiss="modal">Start the simulation</button>
+							<button type="button" class="btn btn-default" v-on:click="reset(false)" data-dismiss="modal">Save</button>
+							<button type="button" class="btn btn-success" v-on:click="reset(true)" data-dismiss="modal">Save and start</button>
 						</div>
 					</div>
 				</div>
@@ -95,8 +96,14 @@
 			<h3 class="text-center">Experiment Simulator</h3>
 			<div class="lead text-center">{{parameters.title}} scenario</div>
 			<div class="row">
+				<p class="text-center">
+					<button type="button" class="btn btn-xs btn-primary" v-on:click="step" data-dismiss="modal">Step</button>
+					<button type="button" class="btn btn-xs" :class="{'btn-success': repeating, 'btn-primary': !repeating}" v-on:click="toggle_repeat" data-dismiss="modal">Repeat</button>
+					<button type="button" class="btn btn-xs btn-default" v-on:click="open_settings" data-dismiss="modal">Settings</button>
+					<button type="button" class="btn btn-xs btn-default" v-on:click="reset(false)" data-dismiss="modal">Reset</button>
+				</p>
 				<div class="col-md-12 col-xs-12">
-					<simulation v-bind:effect="parameters.effect"></simulation>
+					<simulation :effect="parameters.effect" :repeating="repeating"></simulation>
 				</div>
 			</div>
 			<div class="row">
@@ -116,7 +123,7 @@
 				template: `
 					<div class="container">
 						<div class="stretch chart-container"></div>
-						<p class="text-center"><small class="text-muted"><mark v-if="n != 1000"><var>n</var> = <var>{{n}}</var></mark><span v-if="n == 1000"><var>n</var> = <var>{{n}}</var></span>, <var>base conversion rate</var> = <var>{{cr}}</var>, <var>effect of treatment</var> = <var>{{effect}}</var><span v-if="peek > 1">, <mark>peeking {{peek}} times</mark></span></small></p>
+						<p class="text-center"><var>n</var> = <var>{{n}}</var>, <var>base conversion rate</var> = <var>{{cr}}</var>, <var>effect of treatment</var> = <var>{{effect}}</var><span v-if="peek > 1">, <mark>peeking {{peek}} times</mark></span></p>
 						<div class="row">
 							<table class="table table-striped">
 								<thead>
@@ -159,6 +166,7 @@
 					display_type_m:				{ type: Boolean, default: true },
 					display_type_s:				{ type: Boolean, default: true },
 					display_power: 				{ type: Boolean, default: false },
+					repeating:					{ type: Boolean, default: false },
 				},
 				data: function () {
 					return {
@@ -170,7 +178,6 @@
 						bounds: [-0.2,0.2],
 						results: { significant: [], insignificant: [], significant_opposite: [] },
 						g: '',
-						repeating: false,
 					}
 				},
 				computed: {
@@ -228,8 +235,8 @@
 					EventBus.$on('step', params => {
 						this.step();
 					});
-					EventBus.$on('toggle_repeat', params => {
-						this.toggle_repeat();
+					EventBus.$on('reset', params => {
+						this.reset();
 					});
 					
 					var svg = d3.select(this.$el).select('.chart-container').append("svg")
@@ -311,11 +318,11 @@
 							}
 						}
 					},
-					toggle_repeat: function() {
-						this.repeating = !this.repeating;
-					},
 					repeat: function() {
 						if (this.repeating) { this.step(); }
+					},
+					reset: function() {
+						this.results = { significant: [], insignificant: [], significant_opposite: [] };
 					},
 					rbinom: function(n, p) {
 						var b = 0;
@@ -351,6 +358,7 @@
 						},
 					],
 					selected_parameter_set: 0,
+					repeating: false,
 				},
 				computed: {
 					parameters: function() {
@@ -358,9 +366,21 @@
 					},
 				},
 				methods: {
-					restart: function() {
-						EventBus.$emit('toggle_repeat');
-					}
+					step: function() {
+						EventBus.$emit('step');
+					},
+					toggle_repeat: function() {
+						this.repeating = !this.repeating;
+					},
+					reset: function(start) {
+						this.repeating = start;
+						EventBus.$emit('reset');
+					},
+					open_settings: function() {
+						this.repeating = false;
+						$('#paramModal').modal({ backdrop: 'static', keyboard: false });
+					},
+
 				},
 			});
 			
