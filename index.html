@@ -356,6 +356,10 @@
 							title: 'Massively underpowered',
 							description: 'The simulated effect is so tiny compared to the sample size, it will be almost impossible to detect. Power will be effectively only 10%. As a result, the type-M error will be ginormous, and the likelihood of making a type-S error will be substantial.'
 						},
+						{ n: 1000, cr: 0.1, effect: 0, bounds: [-0.099,0.101], power: '-',
+							title: 'True negative',
+							description: 'The simulated effect is zero. There is no effect to detect. Power is undefined.'
+						},
 					],
 					selected_parameter_set: 0,
 					repeating: false,
