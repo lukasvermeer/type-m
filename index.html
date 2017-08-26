@@ -92,54 +92,11 @@
 				</div>
 			</div>
 		
-			<h3 class="text-center">Type-M and Type-S Simulator</h3>
+			<h3 class="text-center">Experiment Simulator</h3>
 			<div class="lead text-center">{{parameters.title}} scenario</div>
 			<div class="row">
 				<div class="col-md-12 col-xs-12">
-					<div class="chart-container"></div>
-				</div>
-			</div>
-			<p></p>
-			<div class="row">
-				<div class="col-md-6 col-xs-12">
-					<div class="jumbotron">
-						<p class="text-center">number of trials simulated</p>
-						<h1 class="text-center">{{trials.toLocaleString('nl')}}</h1>
-					</div>
-				</div>
-				<div class="col-md-6 col-xs-12">
-					<div class="jumbotron">
-						<p class="text-center">observed power</p>
-						<h1 class="text-center">{{power.toLocaleString('nl', {style: 'percent'})}}</h1>
-					</div>
-				</div>
-			</div>
-			<div class="row">
-				<div class="col-md-6 col-xs-12">
-					<div class="jumbotron">
-						<p class="text-center">average observed effect per trial</p>
-						<h1 class="text-center">{{averages.total.toFixed(5)}}</h1>
-					</div>
-				</div>
-				<div class="col-md-6 col-xs-12">
-					<div class="jumbotron">
-						<p class="text-center">average observed effect per significant trial</p>
-						<h1 class="text-center">{{average_abs_effect.toFixed(5)}}</h1>
-					</div>
-				</div>
-			</div>
-			<div class="row">
-				<div class="col-md-6 col-xs-12">
-					<div class="jumbotron">
-						<p class="text-center">type-M error</p>
-						<h1 class="text-center">{{type_m_error.toLocaleString('nl')}}</h1>
-					</div>
-				</div>
-				<div class="col-md-6 col-xs-12">
-					<div class="jumbotron">
-						<p class="text-center">type-S error</p>
-						<h1 class="text-center">{{type_s_error.toLocaleString('nl', {style: 'percent'})}}</h1>
-					</div>
+					<simulation v-bind:effect="parameters.effect"></simulation>
 				</div>
 			</div>
 			<div class="row">
@@ -153,51 +110,72 @@
 		</div>
 		
 		<script type="text/javascript">
-			var SPEED = 100;
-			
-			var w = 1140, h = 500;
+			const EventBus = new Vue();
 
-			var svg = d3.select('.chart-container').append("svg")
-				.attr("width", '100%')
-				.attr("height", '100%')
-				.attr('viewBox','0 0 '+w+' '+h)
-				.attr('preserveAspectRatio','xMinYMin');
-				
-			var margin = {top: 10, right: 20, bottom: 20, left: 20},
-				width = +w - margin.left - margin.right,
-				height = +h - margin.top - margin.bottom;
-
-			typem = new Vue({
-				el: '#app-typem',
-				data: {
-					bins: 200,
-					parameter_sets: [
-						{ n: 1000, cr: 0.1, effect: 0.1, bounds: [0,0.2], power: 0.99,
-							title: 'Massively overpowered',
-							description: 'The simulated effect is so large compared to the sample size, it will be almost impossible to miss. This means power is effectively 100%. As a result, the type-M error will be very tiny, and the likelihood of making a type-S error will be negligible.',
-							recommendation: 'Try this one first to get an idea of what a good result should look like.'
-						},
-						{ n: 1000, cr: 0.1, effect: 0.059, bounds: [-0.035,0.149], power: 0.8,
-							title: 'Properly powered',
-							description: 'We have powered the test according to common practise, so that approximately 80% of all replications will detect a significant effect. As a result, the type-M error will be manageable, and the likelihood of making a type-S error will still be negligible.'
-						},
-						{ n: 1000, cr: 0.1, effect: 0.025, bounds: [-0.07,0.12], power: 0.24,
-							title: 'Somewhat underpowered',
-							description: 'We have somewhat underpowered the test, so that approximately 35% of all replications will detect a significant effect. As a result, the type-M error will be substantial, and the likelihood of making a type-S error will start to be noticeable.'
-						},
-						{ n: 1000, cr: 0.1, effect: 0.001, bounds: [-0.099,0.101], power: 0.05,
-							title: 'Massively underpowered',
-							description: 'The simulated effect is so tiny compared to the sample size, it will be almost impossible to detect. Power will be effectively only 10%. As a result, the type-M error will be ginormous, and the likelihood of making a type-S error will be substantial.'
-						},
-						],
-					selected_parameter_set: 0,
-					results: { significant: [], insignificant: [], significant_opposite: [] },
-					g: ''
+			Vue.component('simulation', {
+				template: `
+					<div class="container">
+						<div class="stretch chart-container"></div>
+						<p class="text-center"><small class="text-muted"><mark v-if="n != 1000"><var>n</var> = <var>{{n}}</var></mark><span v-if="n == 1000"><var>n</var> = <var>{{n}}</var></span>, <var>base conversion rate</var> = <var>{{cr}}</var>, <var>effect of treatment</var> = <var>{{effect}}</var><span v-if="peek > 1">, <mark>peeking {{peek}} times</mark></span></small></p>
+						<div class="row">
+							<table class="table table-striped">
+								<thead>
+									<tr>
+										<th v-if="display_trials" class="align-center">number of trials simulated</th>
+										<th v-if="display_observed_effect" class="align-center">average observed effect</th>
+										<th v-if="display_significant_effect" class="align-center">average significant effect</th>
+										<th v-if="display_type_i" class="align-center">type-I error rate</th>
+										<th v-if="display_type_ii" class="align-center">type-II error rate</th>
+										<th v-if="display_type_m" class="align-center">type-M error rate</th>
+										<th v-if="display_type_s" class="align-center">type-S error rate</th>
+										<th v-if="display_power" class="align-center">observed power</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr>
+										<td v-if="display_trials" class="align-center big-font">{{trials ? trials.toLocaleString('us') : "-"}}</td>
+										<td v-if="display_observed_effect" class="align-center big-font">{{averages.total ? averages.total.toFixed(3) : "-"}}</td>
+										<td v-if="display_significant_effect" class="align-center big-font">{{average_abs_effect ? average_abs_effect.toFixed(3) : "-"}}</td>
+										<td v-if="display_type_i" class="align-center big-font">{{type_i_error ? type_i_error.toLocaleString('us', {style: 'percent'}) : "-"}}</td>
+										<td v-if="display_type_ii" class="align-center big-font">{{type_ii_error ?type_ii_error.toLocaleString('us', {style: 'percent'}) : "-"}}</td>
+										<td v-if="display_type_m" class="align-center big-font">{{type_m_error ? type_m_error.toLocaleString('us') : "-"}}</td>
+										<td v-if="display_type_s" class="align-center big-font">{{type_s_error ? type_s_error.toLocaleString('us', {style: 'percent'}) : "-"}}</td>
+										<td v-if="display_power" class="align-center big-font">{{power ? power.toLocaleString('us', {style: 'percent'}) : "-"}}</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>						
+					</div>
+				`,
+				props: {
+					effect: 					{ type: Number, default: 0 },
+					n:  						{ type: Number, default: 1000 },
+					peek:						{ type: Number, default: 1 },
+					display_trials:				{ type: Boolean, default: true },
+					display_significant_effect:	{ type: Boolean, default: true },
+					display_observed_effect:	{ type: Boolean, default: true },
+					display_type_i:				{ type: Boolean, default: true },
+					display_type_ii:			{ type: Boolean, default: true },
+					display_type_m:				{ type: Boolean, default: true },
+					display_type_s:				{ type: Boolean, default: true },
+					display_power: 				{ type: Boolean, default: false },
+				},
+				data: function () {
+					return {
+						w: 1140,
+						h: 500,
+						margin: {top: 10, right: 20, bottom: 20, left: 20},
+						bins: 200,
+						cr: 0.1,
+						bounds: [-0.2,0.2],
+						results: { significant: [], insignificant: [], significant_opposite: [] },
+						g: '',
+						repeating: false,
+					}
 				},
 				computed: {
-					parameters: function() {
-						return this.parameter_sets[this.selected_parameter_set];
-					},
+					width: function() { return +this.w - this.margin.left - this.margin.right },
+					height: function() { return +this.h - this.margin.top - this.margin.bottom},
 					averages: function() {
 						var a = {}, total_sum = 0;
 						for (var k in this.results) {
@@ -217,32 +195,62 @@
 								(Math.abs(this.averages.significant_opposite||0) * this.results.significant_opposite.length))
 								/ (this.results.significant.length + this.results.significant_opposite.length);
 					},
+					type_i_error: function() {
+						if (this.effect != 0) return "-"; // if null is false, type-I error is undefined.
+						if (this.trials == 0) return "-";
+						if (this.results.significant.length + this.results.significant_opposite.length == 0) return 0;
+						return (this.results.significant.length + this.results.significant_opposite.length) / this.trials;
+					},
+					type_ii_error: function() {
+						if (this.effect == 0) return "-"; // if null is true, type-II error is undefined.
+						if (this.trials == 0) return "-";
+						return 1 - this.power;
+					},
 					type_m_error: function() {
-						return this.average_abs_effect / this.parameters.effect;
+						if (this.effect == 0) return "-"; // if null is true, type-M error is undefined.
+						return this.average_abs_effect / this.effect;
 					},
 					type_s_error: function() {
+						if (this.effect == 0) return "-"; // if null is true, type-S error is undefined.
+						if (this.results.significant_opposite.length == 0) return 0;
 						return this.results.significant_opposite.length / (this.results.significant.length + this.results.significant_opposite.length);
 					},
 					trials: function() {
 						return this.results.significant.length + this.results.significant_opposite.length + this.results.insignificant.length;
 					},
 					power: function() {
+						if (this.effect == 0) return "-"; // if null is true, power is undefined.
+						if (this.trials == 0) return "-";
 						return (this.results.significant.length + this.results.significant_opposite.length) / this.trials;
 					}
 				},
 				mounted: function() {
-					this.g = d3.select("svg").append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+					EventBus.$on('step', params => {
+						this.step();
+					});
+					EventBus.$on('toggle_repeat', params => {
+						this.toggle_repeat();
+					});
+					
+					var svg = d3.select(this.$el).select('.chart-container').append("svg")
+						.attr("width", '100%')
+						.attr("height", '100%')
+						.attr('viewBox','0 0 '+this.w+' '+this.h)
+						.attr('preserveAspectRatio','xMinYMin');
+
+					this.g = d3.select(this.$el).select("svg").append("g").attr("transform", "translate(" + this.margin.left + "," + this.margin.top + ")");
 					this.update(this.results);
+					d3.interval(this.repeat, 100);
 				},
 				methods: {
 					update: function(data) {
-						var x = d3.scaleLinear().domain(this.parameters.bounds).rangeRound([0, width]);
+						var x = d3.scaleLinear().domain(this.bounds).rangeRound([0, this.width]);
 						var histogram = d3.histogram().domain(x.domain()).thresholds(x.ticks(this.bins));
 						var b1 = histogram(this.results.significant);
 						var b2 = histogram(this.results.significant_opposite);
 						var b3 = histogram(this.results.insignificant);
 						var b = d3.stack().keys(d3.range(3))(d3.transpose([b1.map(function(d) {return d.length}),b2.map(function(d) {return d.length}),b3.map(function(d) {return d.length})]));
-						var y = d3.scaleLinear().domain([0, d3.max(b[2], function(d) { return d[1]; })]).range([height, 0]);
+						var y = d3.scaleLinear().domain([0, d3.max(b[2], function(d) { return d[1]; })]).range([this.height, 0]);
 						var color = d3.scaleOrdinal().domain(d3.range(3)).range(d3.schemeCategory20);
 						var colorsort = [0,2,1];
 
@@ -259,28 +267,38 @@
 								.attr("transform", function(d, i) { return "translate(" + x(b1[i].x0) + "," + y(d[0]) + ")"; })
 								.attr("height", 0)
 							.merge(rect)
-								.transition().duration(SPEED)
+								.transition().duration(100)
 									.attr("transform", function(d, i) { return "translate(" + x(b1[i].x0) + "," + y(d[1]) + ")"; })
-									.attr("height", function(d) { return height - y(d[1]-d[0]); });
+									.attr("height", function(d) { return y(0) - y(d[1]-d[0]); });
 						
 						this.g.selectAll(".axis").remove();
 						this.g.append("g")
 							.attr("class", "axis axis--x")
-							.attr("transform", "translate(0," + height + ")")
+							.attr("transform", "translate(0," + this.height + ")")
 							.call(d3.axisBottom(x));
 					},
-					add_one: function() {
-						var n = this.trials;
-						if (n >= 1000000) return;
-						for (var j = 0; j < Math.min(1000,10**(""+(n)).length/10); ++j) {
-							base_n = this.rbinom(this.parameters.n, 0.5);
-							var_n = this.parameters.n - base_n;
+					step: function() {
+						for (var j = 0; j < Math.min(100,10**(""+(this.trials-1)).length/10); ++j) {
+							var base_n  = 0; var var_n = 0; var base_c = 0; var var_c = 0;
+							for (var k = 0; k < this.peek; ++k) {
+								var n_add = Math.ceil(this.n / this.peek);
+								
+								var base_n_add = this.rbinom(n_add, 0.5);
+								var var_n_add = n_add - base_n_add;
+
+								base_n += base_n_add;
+								var_n += var_n_add;
 							
-							base_c = this.rbinom(base_n, this.parameters.cr);
-							var_c = this.rbinom(var_n, (this.parameters.cr + this.parameters.effect));
+								base_c += this.rbinom(base_n_add, this.cr);
+								var_c += this.rbinom(var_n_add, (this.cr + this.effect));
 							
-							effect = (var_c/var_n) - (base_c/base_n);
-							gval = calculate_g_test([[base_n - base_c, base_c], [var_n - var_c, var_c]]);
+								effect = (var_c/var_n) - (base_c/base_n);
+								gval = calculate_g_test([[base_n - base_c, base_c], [var_n - var_c, var_c]]);
+
+								if (gval >= 3.841459) {
+									break;
+								}
+							}
 
 							if (gval >= 3.841459) {
 								if (effect > 0) {
@@ -293,18 +311,57 @@
 							}
 						}
 					},
+					toggle_repeat: function() {
+						this.repeating = !this.repeating;
+					},
+					repeat: function() {
+						if (this.repeating) { this.step(); }
+					},
 					rbinom: function(n, p) {
 						var b = 0;
 						for (var i = 0; i < n; ++i) { if (Math.random() < p) ++b; };
 						return b;
 					},
-					restart: function() {
-						d3.interval(function() { typem.add_one(); }, SPEED);
-					}
 				},
 				watch: {
 					trials: function(val) { this.update(val) }
 				}
+			});
+
+			typem = new Vue({
+				el: '#app-typem',
+				data: {
+					parameter_sets: [
+						{ n: 1000, cr: 0.1, effect: 0.1, bounds: [0,0.2], power: 0.99,
+							title: 'Massively overpowered',
+							description: 'The simulated effect is so large compared to the sample size, it will be almost impossible to miss. This means power is effectively 100%. As a result, the type-M error will be very tiny, and the likelihood of making a type-S error will be negligible.',
+							recommendation: 'Try this one first to get an idea of what a good result should look like.'
+						},
+						{ n: 1000, cr: 0.1, effect: 0.059, bounds: [-0.035,0.149], power: 0.8,
+							title: 'Properly powered',
+							description: 'We have powered the test according to common practise, so that approximately 80% of all replications will detect a significant effect. As a result, the type-M error will be manageable, and the likelihood of making a type-S error will still be negligible.'
+						},
+						{ n: 1000, cr: 0.1, effect: 0.025, bounds: [-0.07,0.12], power: 0.24,
+							title: 'Somewhat underpowered',
+							description: 'We have somewhat underpowered the test, so that approximately 35% of all replications will detect a significant effect. As a result, the type-M error will be substantial, and the likelihood of making a type-S error will start to be noticeable.'
+						},
+						{ n: 1000, cr: 0.1, effect: 0.001, bounds: [-0.099,0.101], power: 0.05,
+							title: 'Massively underpowered',
+							description: 'The simulated effect is so tiny compared to the sample size, it will be almost impossible to detect. Power will be effectively only 10%. As a result, the type-M error will be ginormous, and the likelihood of making a type-S error will be substantial.'
+						},
+					],
+					selected_parameter_set: 0,
+				},
+				computed: {
+					parameters: function() {
+						return this.parameter_sets[this.selected_parameter_set];
+					},
+				},
+				methods: {
+					restart: function() {
+						EventBus.$emit('toggle_repeat');
+					}
+				},
 			});
 			
 			$(function() {
