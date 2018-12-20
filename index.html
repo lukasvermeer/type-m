@@ -49,7 +49,7 @@
 									<div :class="[ (i==selected_parameter_set) ? 'alert alert-success' : 'alert alert-nope']" v-on:click="selected_parameter_set = i">
 										<label><input type="radio" name="params" id="params" :value="i" v-model="selected_parameter_set">&nbsp;&nbsp;{{v.title}}</label> <var>n</var> = <var>{{v.n}}</var>, <var>base conversion rate</var> = <var>{{v.cr}}</var>, <var>effect of treatment</var> = <var>{{v.effect}}</var>, <var>power</var> = <var>{{v.power.toLocaleString('nl', {style: 'percent'})}}</var>
 										<p>{{v.description}}</p>
-										<p v-if="v.recommendation"><b>{{v.recommendation}}</b></p>
+										<p v-if="v.recommendation"><strong>{{v.recommendation}}</strong></p>
 									</div>
 								</div>
 							</form>
